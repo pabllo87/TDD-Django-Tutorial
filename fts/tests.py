@@ -9,7 +9,7 @@ POLL1 = PollInfo(
     choices=[
         'Very awesome',
         'Quite awesome',
-        'Moderatley awesome',
+        'Moderately awesome',
     ],
 )
 POLL2 = PollInfo(
@@ -183,9 +183,10 @@ class PollsTest(LiveServerTestCase):
         self.assertEquals(len(choice_inputs), 3)
 
         # He also sees a from, which offers him several choices.
-        choice_label = self.browser.find_elements_by_tag_name('label')
-        choices_text = [c.text for c in choice_label]
+        choice_labels = self.browser.find_elements_by_tag_name('label')
+        choices_text = [c.text for c in choice_labels]
         self.assertEquals(choices_text, [
+            'Vote:',  # this label is auto-generated fot the whole form
             'Very awesome',
             'Quite awesome',
             'Moderately awesome',
@@ -205,8 +206,32 @@ class PollsTest(LiveServerTestCase):
         # The page refreshes, and he sees that his choices
         # has updated the results. they now say
         # "100 %: very awesome".
-        self.fail('TODO')
+        body_text = self.browser.find_element_by_tag_name('body').text
+        self.assertIn('100 %: Very awesome', body_text)
 
         # The page also says "1 votes"
+        self.assertIn('1 vote', body_text)
+
+        # Herbert suspects that the website isn't very well protected
+        # against people submitting multiple votes yet, so he tries
+        # to do a little astroturfing
+        self.browser.find_element_by_css_selector("input[value='1']").click()
+        self.browser.find_element_by_css_selector("input[type='submit']").click()
+
+        # The page refreshes, and he sees that his choice has updated the
+        # results. It still says # "100 %: very awesome".
+        body_text = self.browser.find_element_by_tag_name('body').text
+        self.assertIn('2 votes', body_text)
+
+        # Cackling maniacally over his l33t haxx0ring skills, he tries
+        # voting for a different choice
+        self.browser.find_element_by_css_selector("input[value='2']").click()
+        self.browser.find_element_by_css_selector("input[type='submit']").click()
+
+        # Now, the percentages update, as well as the votes
+        body_text = self.browser.find_element_by_tag_name('body').text
+        self.assertIn('67 %: Very awesome', body_text)
+        self.assertIn('33 %: Quite awesome', body_text)
+        self.assertIn('3 votes', body_text)
 
         # Satisfied, he goes back to sleep
